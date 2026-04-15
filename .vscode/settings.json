@@ -12,6 +12,7 @@
     "pywinctl",
     "rapidocr",
     "readtext",
+    "Tesseract",
     "textline"
   ]
 }

@@ -4,9 +4,43 @@ import pyautogui
 import pywinctl as pwc
 import numpy as np
 import cv2
+import pytesseract
 
 from pynput import keyboard
-from rapidocr_onnxruntime import RapidOCR
+from datetime import datetime
+
+import pytesseract
+import os
+
+class TesseractOCR:
+    def __init__(self, tesseract_path=None):
+        """
+        Initializes the OCR class.
+        :param tesseract_path: The full path to the tesseract executable.
+        """
+        # If path is provided (common for Windows), set it explicitly
+        if tesseract_path:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        
+    def extract_text(self, image, lang='eng', config='--psm 3'):
+        """
+        Extracts text from an image file.
+        :param image: Path to the image file.
+        :param lang: Language code (e.g., 'eng').
+        :param config: Custom Tesseract configuration flags.
+        :return: Extracted string.
+        """
+        try:
+            text = pytesseract.image_to_string(image, lang=lang, config=config)
+            return text.strip()
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def get_data(self, image):
+        """
+        Returns detailed OCR data including bounding boxes and confidence.
+        """
+        return pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
 
 class AFKClicker:
     def __init__(self):
@@ -25,7 +59,7 @@ class AFKClicker:
         self.retry_interval = 0.1
         self.click_interval = 2
 
-        self.ocr = RapidOCR()
+        self.ocr = TesseractOCR()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
 
@@ -63,24 +97,25 @@ class AFKClicker:
                 continue
 
             screenshot = pyautogui.screenshot(region=self.minecraft_bounds)
-            frame = np.array(screenshot)
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            frame = cv2.resize(frame, None, fx=2, fy=2)
 
-            # screenshot.save("debug_screenshot.png")
-            # continue
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            filename = f"debug_{timestamp}.png"
+            screenshot.save(f"screenshots/{filename}")
 
-            results, _ = self.ocr(frame)
+            results = self.ocr.extract_text(screenshot)
             if not results:
+                print("No text detected. Retrying...")
                 continue
 
-            text = " ".join([line[1] for line in result])
+            print(f"OCR Result: {results}")
 
-            if self.target_text.lower() in text.lower():
-                print(f"Text '{self.target_text}' detected → clicking")
-                pyautogui.click(button=self.button)
-                time.sleep(self.click_interval)
-                pyautogui.click(button=self.button)
+            # text = " ".join([line[1] for line in result])
+
+            # if self.target_text.lower() in text.lower():
+            #     print(f"Text '{self.target_text}' detected → clicking")
+            #     pyautogui.click(button=self.button)
+            #     time.sleep(self.click_interval)
+            #     pyautogui.click(button=self.button)
             
             time.sleep(self.retry_interval)
 
