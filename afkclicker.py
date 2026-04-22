@@ -4,43 +4,12 @@ import pyautogui
 import pywinctl as pwc
 import numpy as np
 import cv2
-import pytesseract
 
 from pynput import keyboard
 from datetime import datetime
+from ocr.RapidOCR import RapidOCR
 
-import pytesseract
 import os
-
-class TesseractOCR:
-    def __init__(self, tesseract_path=None):
-        """
-        Initializes the OCR class.
-        :param tesseract_path: The full path to the tesseract executable.
-        """
-        # If path is provided (common for Windows), set it explicitly
-        if tesseract_path:
-            pytesseract.pytesseract.tesseract_cmd = tesseract_path
-        
-    def extract_text(self, image, lang='eng', config='--psm 3'):
-        """
-        Extracts text from an image file.
-        :param image: Path to the image file.
-        :param lang: Language code (e.g., 'eng').
-        :param config: Custom Tesseract configuration flags.
-        :return: Extracted string.
-        """
-        try:
-            text = pytesseract.image_to_string(image, lang=lang, config=config)
-            return text.strip()
-        except Exception as e:
-            return f"Error: {str(e)}"
-
-    def get_data(self, image):
-        """
-        Returns detailed OCR data including bounding boxes and confidence.
-        """
-        return pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
 
 class AFKClicker:
     def __init__(self):
@@ -49,7 +18,6 @@ class AFKClicker:
         self.listener = keyboard.GlobalHotKeys({
             '<ctrl>+`': self.quit_program,
             '<ctrl>+[': self.afk_fishing,
-            # '<ctrl>+x': self.afk_xp_farm_skeletons,
             '<ctrl>+]': self.stop_afk
         })
         self.minecraft_bounds = None
@@ -59,9 +27,26 @@ class AFKClicker:
         self.retry_interval = 0.1
         self.click_interval = 2
 
-        self.ocr = TesseractOCR()
+        self.ocr = RapidOCR()
         self.thread = threading.Thread(target=self.run, daemon=True)
 
+    def start(self):
+        print("Starting AFK Clicker...")
+        self.thread.start()
+        with self.listener:
+            self.listener.join()
+
+    def quit_program(self):
+        print("Exiting AFK Clicker...")
+        self.running = False
+        self.program_running = False
+        self.listener.stop()
+
+    def stop_afk(self):
+        print("Ending AFK Session...")
+        self.running = False
+        self.button = None
+        self.target_text = None
 
     def get_minecraft_window_bounds(self):
         windows = pwc.getWindowsWithTitle('minecraft', condition=pwc.Re.CONTAINS, flags=pwc.Re.IGNORECASE)
@@ -77,12 +62,6 @@ class AFKClicker:
             self.minecraft_bounds = (new_left, new_top, new_width, new_height)
         else:
             print("Minecraft window not found. Please make sure Minecraft is running.")
-
-    def quit_program(self):
-        print("Exiting AFK Clicker...")
-        self.running = False
-        self.program_running = False
-        self.listener.stop()
 
     def run(self):
         while self.program_running:
@@ -119,12 +98,6 @@ class AFKClicker:
             
             time.sleep(self.retry_interval)
 
-    def stop_afk(self):
-        print("Ending AFK Session...")
-        self.running = False
-        self.button = None
-        self.target_text = None
-
     def afk_fishing(self):
         if self.running:
             print("Already running an AFK session. Please stop it first.")
@@ -135,20 +108,14 @@ class AFKClicker:
         self.button = "right"
         self.running = True
 
-    def afk_xp_farm_skeletons(self):
-        if self.running:
-            print("Already running an AFK session. Please stop it first.")
-            return
-        print("Starting AFK XP Farm for Skeletons...")
-        self.target_text = "skeleton rattles"
-        self.button = "left"
-        self.running = True
-
-    def start(self):
-        print("Starting AFK Clicker...")
-        self.thread.start()
-        with self.listener:
-            self.listener.join()
+    # def afk_xp_farm_skeletons(self):
+    #     if self.running:
+    #         print("Already running an AFK session. Please stop it first.")
+    #         return
+    #     print("Starting AFK XP Farm for Skeletons...")
+    #     self.target_text = "skeleton rattles"
+    #     self.button = "left"
+    #     self.running = True
 
 if __name__ == "__main__":
     app = AFKClicker()

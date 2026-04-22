@@ -1,6 +1,4 @@
 pynput
 pyautogui
 pywinctl
-pillow
-pytesseract
 numpy
